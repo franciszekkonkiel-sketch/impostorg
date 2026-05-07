@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Impostor Ultra FINAL</title>
+<title>Impostor FIXED</title>
 
 <style>
 body{
@@ -14,7 +14,7 @@ body{
   text-align:center;
 }
 
-.container{max-width:900px;margin:auto;padding:15px;}
+.container{max-width:850px;margin:auto;padding:15px;}
 
 .card{
   background:rgba(255,255,255,0.08);
@@ -83,11 +83,10 @@ button{
 
 <body>
 
-<h1>🎭 IMPOSTOR FINAL PRO</h1>
+<h1>🎭 IMPOSTOR FIXED</h1>
 
 <div class="container">
 
-<!-- SETTINGS -->
 <div class="card">
   <h3>⚙️ Ustawienia</h3>
   <input type="number" id="impCount" value="1" min="1">
@@ -97,7 +96,6 @@ button{
   </select>
 </div>
 
-<!-- WORD DB -->
 <div class="card">
   <h3>📚 Hasła</h3>
   <input id="word" placeholder="hasło">
@@ -107,7 +105,6 @@ button{
   <div id="db"></div>
 </div>
 
-<!-- PLAYERS -->
 <div class="card">
   <h3>👥 Gracze</h3>
   <input id="name" placeholder="imię">
@@ -122,30 +119,26 @@ button{
   <div id="playersList"></div>
 </div>
 
-<!-- GAME -->
 <div class="card hidden" id="game">
   <h2>🏀 Kliknij gracza</h2>
   <div class="grid" id="grid"></div>
 </div>
 
-<!-- POPUP -->
 <div class="popup hidden" id="popup">
   <h2 id="pName"></h2>
   <p id="pRole"></p>
   <button onclick="closePopup()">OK</button>
 </div>
 
-<!-- VOTE -->
 <div class="card hidden" id="voteBox">
   <h2>🗳️ GŁOSOWANIE</h2>
   <div id="voteList"></div>
-  <button onclick="finishVote()">Zakończ głosowanie</button>
+  <button onclick="finishVote()">Zakończ</button>
 </div>
 
-<!-- END -->
 <div class="card hidden" id="end">
   <h2 id="result"></h2>
-  <div class="table" id="score"></div>
+  <div id="score"></div>
   <button onclick="restart()">Nowa runda</button>
 </div>
 
@@ -153,16 +146,15 @@ button{
 
 <script>
 
-/* DATA */
 let db = JSON.parse(localStorage.getItem("db")) || [];
-let players=[];
-let impostors=[];
-let current=null;
-let shown=0;
-let votes={};
-let scores={};
+let players = [];
+let impostors = [];
+let current = null;
+let shown = 0;
+let votes = {};
+let scores = {};
 
-/* WORDS */
+/* HASŁA */
 function addWord(){
   if(!word.value||!hint.value) return;
   db.push({w:word.value,h:hint.value});
@@ -173,7 +165,7 @@ function addWord(){
 
 function renderDB(){
   dbDiv.innerHTML=db.map((d,i)=>
-    `<div>🔤 ${d.w} → 💡 ${d.h}
+    `<div>${d.w} → ${d.h}
     <button onclick="delWord(${i})">X</button></div>`
   ).join("");
 }
@@ -184,7 +176,7 @@ function delWord(i){
   renderDB();
 }
 
-/* PLAYERS */
+/* GRACZE */
 function addPlayer(){
   if(!name.value) return;
   players.push(name.value);
@@ -194,13 +186,13 @@ function addPlayer(){
 }
 
 function renderPlayers(){
-  playersList.innerHTML=players.map(p=>`👤 ${p}`).join("<br>");
+  playersList.innerHTML=players.map(p=>"👤 "+p).join("<br>");
 }
 
 /* START */
 function startGame(){
 
-  if(players.length<2 || db.length==0)
+  if(players.length<2 || db.length===0)
     return alert("Dodaj dane");
 
   current=db[Math.floor(Math.random()*db.length)];
@@ -231,7 +223,7 @@ function renderGrid(){
   ).join("");
 }
 
-/* SHOW ROLE */
+/* SHOW */
 function show(i){
 
   popup.classList.remove("hidden");
@@ -248,20 +240,26 @@ function show(i){
       extra="<br>🤝 "+impNames.filter(n=>n!==players[i]).join(", ");
     }
 
-    pRole.innerHTML="🚨 IMPOSTOR<br>💡 "+current.h+extra;
+    pRole.innerHTML="🚨 IMPOSTOR<br>"+current.h+extra;
 
   } else {
     pRole.innerHTML="🔤 HASŁO: "+current.w;
   }
 }
 
-/* CLOSE */
+/* 🔥 FIXED CLOSE (TO JEST KLUCZ) */
 function closePopup(){
+
   popup.classList.add("hidden");
+
   shown++;
 
-  if(shown>=players.length){
-    startVote();
+  if(shown >= players.length){
+
+    setTimeout(()=>{
+      startVote();
+    },200);
+
   }
 }
 
@@ -279,7 +277,7 @@ function vote(i){
   votes[i]=(votes[i]||0)+1;
 }
 
-/* FINISH VOTE */
+/* END */
 function finishVote(){
 
   let max=0;
@@ -294,28 +292,17 @@ function finishVote(){
 
   out=+out;
 
-  let txt="";
-
   if(impostors.includes(out)){
-    txt="🚨 IMPOSTOR WYELIMINOWANY: "+players[out];
+    result.innerText="🚨 IMPOSTOR: "+players[out];
     scores[players[out]]=(scores[players[out]]||0)+2;
   } else {
-    txt="❌ niewinny wyrzucony: "+players[out];
+    result.innerText="❌ niewinny: "+players[out];
   }
+
+  score.innerHTML=players.map(p=>`${p}: ${scores[p]||0}`).join("<br>");
 
   voteBox.classList.add("hidden");
   end.classList.remove("hidden");
-
-  result.innerText=txt;
-
-  showScore();
-}
-
-/* SCORE */
-function showScore(){
-  score.innerHTML=players
-    .map(p=>`${p}: ${scores[p]||0} pkt`)
-    .join("<br>");
 }
 
 /* RESET */
