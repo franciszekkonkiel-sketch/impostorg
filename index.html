@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impostor Game CLEAN</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:radial-gradient(circle at top,#0b1220,#020617);
+  color:white;
+  text-align:center;
+}
+
+.container{max-width:650px;margin:auto;padding:15px;}
+
+.card{
+  background:rgba(255,255,255,0.08);
+  margin:10px;
+  padding:15px;
+  border-radius:16px;
+}
+
+input{
+  padding:8px;
+  margin:5px;
+  border-radius:10px;
+  border:none;
+}
+
+button{
+  padding:10px 14px;
+  border:none;
+  border-radius:10px;
+  background:#6366f1;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.hidden{display:none;}
+
+.list{
+  text-align:left;
+  background:rgba(255,255,255,0.05);
+  padding:10px;
+  border-radius:10px;
+  margin-top:10px;
+}
+
+.timer{font-size:26px;color:#facc15;}
+.smallBtn{
+  margin-left:10px;
+  background:#ef4444;
+  padding:5px 10px;
+  font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎭 IMPOSTOR GAME</h1>
+
+<div class="container">
+
+<!-- ➕ BAZA -->
+<div class="card">
+  <h3>➕ Dodaj hasło</h3>
+
+  <input id="word" placeholder="Hasło">
+  <input id="hint" placeholder="Podpowiedź">
+  <button onclick="addWord()">Dodaj</button>
+
+  <br><br>
+
+  <button onclick="toggleDB()">📚 Pokaż bazę</button>
+
+  <div id="dbView" class="list hidden"></div>
+</div>
+
+<!-- 👥 GRACZE -->
+<div class="card">
+  <h3>👥 Gracze</h3>
+  <input id="name" placeholder="Nazwa">
+  <button onclick="addPlayer()">Dodaj</button>
+  <div id="players"></div>
+</div>
+
+<!-- START -->
+<div class="card">
+  <button onclick="startGame()">START GRY</button>
+</div>
+
+<!-- GAME -->
+<div class="card hidden" id="gameBox">
+  <h2 id="turn"></h2>
+  <p id="word"></p>
+  <h3 class="timer" id="timer"></h3>
+  <button onclick="next()">NEXT</button>
+</div>
+
+</div>
+
+<script>
+
+/* 📦 BAZA */
+let db = JSON.parse(localStorage.getItem("db")) || [];
+
+/* 👥 GRACZE */
+let players=[];
+let index=0;
+let timer;
+let time=60;
+
+/* 🎭 IMPOS TOR */
+let impostorIndex=-1;
+
+/* ➕ DODAJ */
+function addWord(){
+  let w=document.getElementById("word").value;
+  let h=document.getElementById("hint").value;
+
+  if(!w||!h)return;
+
+  db.push({word:w,hint:h});
+  localStorage.setItem("db",JSON.stringify(db));
+
+  document.getElementById("word").value="";
+  document.getElementById("hint").value="";
+
+  renderDB();
+}
+
+/* 📚 POKAŻ / UKRYJ */
+function toggleDB(){
+  let box=document.getElementById("dbView");
+
+  if(box.classList.contains("hidden")){
+    box.classList.remove("hidden");
+    renderDB();
+  }else{
+    box.classList.add("hidden");
+  }
+}
+
+/* 📚 RENDER + USUWANIE */
+function renderDB(){
+  let box=document.getElementById("dbView");
+
+  if(db.length===0){
+    box.innerHTML="<div>Brak haseł</div>";
+    return;
+  }
+
+  box.innerHTML=db.map((d,i)=>
+    `<div>
+      🔤 ${d.word} → 🤫 ${d.hint}
+      <button class="smallBtn" onclick="deleteWord(${i})">X</button>
+    </div>`
+  ).join("");
+}
+
+/* ❌ USUŃ HASŁO */
+function deleteWord(i){
+  db.splice(i,1);
+  localStorage.setItem("db",JSON.stringify(db));
+  renderDB();
+}
+
+/* 👥 GRACZE */
+function addPlayer(){
+  let n=document.getElementById("name").value;
+  if(!n)return;
+  players.push(n);
+  renderPlayers();
+}
+
+function renderPlayers(){
+  document.getElementById("players").innerHTML=
+  players.map(p=>`<div>${p}</div>`).join("");
+}
+
+/* 🚀 START */
+function startGame(){
+
+  if(players.length<2){
+    alert("Min 2 graczy!");
+    return;
+  }
+
+  if(db.length===0){
+    alert("Dodaj hasła!");
+    return;
+  }
+
+  time=60;
+  index=0;
+
+  impostorIndex=Math.floor(Math.random()*players.length);
+
+  document.getElementById("gameBox").classList.remove("hidden");
+
+  show();
+  startTimer();
+}
+
+/* 👁 SHOW */
+function show(){
+
+  let item=db[Math.floor(Math.random()*db.length)];
+
+  document.getElementById("turn").innerText="👤 "+players[index];
+
+  if(index===impostorIndex){
+    document.getElementById("word").innerText="🤫 PODPOWIEDŹ: "+item.hint;
+  }else{
+    document.getElementById("word").innerText="🔤 HASŁO: "+item.word;
+  }
+}
+
+/* NEXT */
+function next(){
+  index++;
+  if(index>=players.length) index=0;
+  show();
+}
+
+/* ⏱ TIMER */
+function startTimer(){
+  clearInterval(timer);
+
+  timer=setInterval(()=>{
+    time--;
+    document.getElementById("timer").innerText="⏱ "+time;
+
+    if(time<=0){
+      clearInterval(timer);
+      alert("KONIEC RUNDY!");
+    }
+  },1000);
+}
+
+</script>
+
+</body>
+</html>
