@@ -3,142 +3,121 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IMPOSTOR ULTRA PRO FIX</title>
+<title>Impostor Stable</title>
 
 <style>
 body{
   margin:0;
   font-family:Arial;
-  background:radial-gradient(circle at top,#0b1220,#020617);
+  background:#0b1220;
   color:white;
   text-align:center;
 }
 
-.container{max-width:900px;margin:auto;padding:15px;}
+.container{max-width:800px;margin:auto;padding:15px;}
 
 .card{
   background:rgba(255,255,255,0.08);
   margin:10px;
   padding:15px;
-  border-radius:16px;
+  border-radius:12px;
 }
 
 input,select,button{
   padding:10px;
   margin:5px;
-  border-radius:10px;
+  border-radius:8px;
   border:none;
 }
 
-button{
-  background:#6366f1;
-  color:white;
+button{background:#6366f1;color:white;font-weight:bold;}
+
+.grid{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+}
+
+.player{
+  width:90px;
+  height:90px;
+  border-radius:50%;
+  background:#f97316;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   font-weight:bold;
   cursor:pointer;
+  flex-direction:column;
+}
+
+.popup{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:black;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  z-index:999;
 }
 
 .hidden{display:none;}
 
-.playerGrid{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  gap:15px;
-  margin-top:20px;
-}
-
-.ball{
-  width:95px;
-  height:95px;
-  border-radius:50%;
-  background:#f97316;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-.reveal{
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:black;
-  color:white;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  z-index:999;
-}
-
 .table{
-  margin-top:10px;
-  background:rgba(255,255,255,0.05);
-  padding:10px;
-  border-radius:10px;
   text-align:left;
+  margin-top:10px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🎭 IMPOSTOR ULTRA FIX</h1>
+<h1>🎭 IMPOSTOR STABLE</h1>
 
 <div class="container">
 
 <div class="card">
-  <h3>⚙️ Ustawienia</h3>
-  <input type="number" id="impostorCount" value="1" min="1">
-
-  <select id="knowEachOther">
+  <h3>Ustawienia</h3>
+  <input type="number" id="impCount" value="1" min="1">
+  <select id="knows">
     <option value="yes">Impostorzy się znają</option>
     <option value="no">Nie znają się</option>
   </select>
 </div>
 
 <div class="card">
-  <h3>➕ Hasła</h3>
-  <input id="word" placeholder="Hasło">
-  <input id="hint" placeholder="Podpowiedź">
+  <h3>Hasło</h3>
+  <input id="word" placeholder="hasło">
+  <input id="hint" placeholder="podpowiedź">
   <button onclick="addWord()">Dodaj</button>
 </div>
 
 <div class="card">
-  <h3>👥 Gracze</h3>
-  <input id="name" placeholder="Imię">
+  <h3>Gracze</h3>
+  <input id="name" placeholder="imię">
   <button onclick="addPlayer()">Dodaj</button>
 </div>
 
 <div class="card">
-  <button onclick="startGame()">START</button>
+  <button onclick="start()">START</button>
+</div>
+
+<div class="card">
+  <div id="playersList"></div>
 </div>
 
 <div class="card hidden" id="game">
-  <h2>🏀 Kliknij piłkę</h2>
-  <div class="playerGrid" id="grid"></div>
+  <h2>Kliknij gracza</h2>
+  <div class="grid" id="grid"></div>
 </div>
 
-<div id="blackout" class="reveal hidden">
-  <h2 id="roleTitle"></h2>
-  <p id="roleText"></p>
-  <button onclick="closeReveal()">OK</button>
-</div>
-
-<div class="card hidden" id="voteBox">
-  <h2>🗳️ GŁOSOWANIE</h2>
-  <div id="voteList"></div>
-  <button onclick="finishVote()">Zakończ</button>
-</div>
-
-<div class="card hidden" id="end">
-  <h2 id="result"></h2>
-  <div class="table" id="score"></div>
-  <button onclick="restart()">Nowa runda</button>
+<div class="popup hidden" id="popup">
+  <h2 id="pName"></h2>
+  <p id="pRole"></p>
+  <button onclick="closePopup()">OK</button>
 </div>
 
 </div>
@@ -148,32 +127,37 @@ button{
 let db=[];
 let players=[];
 let impostors=[];
-let current;
-let votes={};
-let scores={};
+let current=null;
 let shown=0;
 
-/* HASŁA */
 function addWord(){
+  if(!word.value||!hint.value) return;
   db.push({w:word.value,h:hint.value});
   word.value=""; hint.value="";
 }
 
-/* GRACZE */
 function addPlayer(){
+  if(!name.value) return;
   players.push(name.value);
-  scores[name.value]=scores[name.value]||0;
   name.value="";
+  renderPlayers();
 }
 
-/* START */
-function startGame(){
+function renderPlayers(){
+  playersList.innerHTML=players.map(p=>"👤 "+p).join("<br>");
+}
 
-  if(players.length<2 || db.length==0) return alert("Brak danych");
+function start(){
+
+  if(players.length<2 || db.length==0){
+    alert("Dodaj dane");
+    return;
+  }
 
   current=db[Math.floor(Math.random()*db.length)];
 
-  let count=+impostorCount.value;
+  let count=Math.min(+impCount.value,players.length);
+
   impostors=[];
 
   while(impostors.length<count){
@@ -182,108 +166,46 @@ function startGame(){
   }
 
   shown=0;
-  votes={};
 
-  game.classList.remove("hidden");
-  render();
+  document.getElementById("game").classList.remove("hidden");
+
+  renderGrid();
 }
 
-/* PIŁKI */
-function render(){
+function renderGrid(){
   grid.innerHTML=players.map((p,i)=>
-    `<div class='ball' onclick='show(${i})'>🏀<div>${p}</div></div>`
+    `<div class='player' onclick='show(${i})'>🏀${p}</div>`
   ).join("");
 }
 
-/* BLACKOUT + POPRAWKA IMPOS */
 function show(i){
 
-  blackout.classList.remove("hidden");
+  popup.classList.remove("hidden");
 
-  let isImp = impostors.includes(i);
+  let isImp=impostors.includes(i);
 
-  let impostorNames = impostors.map(x=>players[x]);
+  pName.innerText=players[i];
 
-  roleTitle.innerText = players[i];
+  let impNames=impostors.map(x=>players[x]);
 
   if(isImp){
-
-    let extra = "";
-
-    let know = knowEachOther.value;
-
-    if(know === "yes"){
-      extra = "<br>🤝 Inni impostorzy: " +
-        impostorNames.filter(n=>n!==players[i]).join(", ");
+    let extra="";
+    if(knows.value==="yes"){
+      extra="<br>🤝 "+impNames.filter(n=>n!==players[i]).join(", ");
     }
-
-    roleText.innerHTML = "🚨 IMPOSTOR<br>💡 "+current.h + extra;
-
+    pRole.innerHTML="🚨 IMPOSTOR<br>"+current.h+extra;
   } else {
-    roleText.innerHTML = "🔤 HASŁO: "+current.w;
+    pRole.innerHTML="🔤 HASŁO: "+current.w;
   }
-
-  blackout.dataset.i=i;
 }
 
-function closeReveal(){
-  blackout.classList.add("hidden");
+function closePopup(){
+  popup.classList.add("hidden");
   shown++;
 
   if(shown>=players.length){
-    startVote();
+    alert("KONIEC PODGLĄDU (tu możesz dodać vote)");
   }
-}
-
-/* VOTE FIX */
-function startVote(){
-
-  voteBox.classList.remove("hidden");
-
-  voteList.innerHTML = players.map((p,i)=>
-    `<div>${p} <button onclick='vote(${i})'>GŁOS</button></div>`
-  ).join("");
-}
-
-function vote(i){
-  votes[i]=(votes[i]||0)+1;
-}
-
-/* KONIEC */
-function finishVote(){
-
-  let max=0;
-  let out=0;
-
-  for(let i in votes){
-    if(votes[i]>max){
-      max=votes[i];
-      out=i;
-    }
-  }
-
-  out=+out;
-
-  let txt="";
-
-  if(impostors.includes(out)){
-    txt="🚨 IMPOSTOR WYRZUCONY: "+players[out];
-    scores[players[out]]+=2;
-  }else{
-    txt="❌ niewinny wyrzucony: "+players[out];
-  }
-
-  voteBox.classList.add("hidden");
-  end.classList.remove("hidden");
-  result.innerText=txt;
-
-  score.innerHTML =
-    players.map(p=>`${p}: ${scores[p]||0} pkt`).join("<br>");
-}
-
-/* RESET */
-function restart(){
-  location.reload();
 }
 
 </script>
