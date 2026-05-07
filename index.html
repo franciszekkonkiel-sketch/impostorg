@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Impostor Game CLEAN</title>
+<title>Impostor Game PRO</title>
 
 <style>
 body{
@@ -23,7 +23,7 @@ body{
   border-radius:16px;
 }
 
-input{
+input, select{
   padding:8px;
   margin:5px;
   border-radius:10px;
@@ -50,7 +50,6 @@ button{
   margin-top:10px;
 }
 
-.timer{font-size:26px;color:#facc15;}
 .smallBtn{
   margin-left:10px;
   background:#ef4444;
@@ -62,20 +61,33 @@ button{
 
 <body>
 
-<h1>🎭 IMPOSTOR GAME</h1>
+<h1>🎭 IMPOSTOR GAME PRO</h1>
 
 <div class="container">
 
-<!-- ➕ BAZA -->
+<!-- ⚙️ USTAWIENIA -->
+<div class="card">
+  <h3>⚙️ Ustawienia gry</h3>
+
+  <label>Ilu impostorów?</label><br>
+  <input type="number" id="impostorCount" value="1" min="1"><br><br>
+
+  <label>Czy impostorzy się znają?</label><br>
+  <select id="knowEachOther">
+    <option value="yes">Tak</option>
+    <option value="no">Nie</option>
+  </select>
+</div>
+
+<!-- ➕ HASŁA -->
 <div class="card">
   <h3>➕ Dodaj hasło</h3>
 
-  <input id="word" placeholder="Hasło">
-  <input id="hint" placeholder="Podpowiedź">
+  <input id="wordInput" placeholder="Hasło">
+  <input id="hintInput" placeholder="Podpowiedź">
   <button onclick="addWord()">Dodaj</button>
 
   <br><br>
-
   <button onclick="toggleDB()">📚 Pokaż bazę</button>
 
   <div id="dbView" class="list hidden"></div>
@@ -97,9 +109,18 @@ button{
 <!-- GAME -->
 <div class="card hidden" id="gameBox">
   <h2 id="turn"></h2>
+
+  <div id="roleInfo" style="margin:10px;font-weight:bold;"></div>
+
   <p id="word"></p>
-  <h3 class="timer" id="timer"></h3>
+
   <button onclick="next()">NEXT</button>
+</div>
+
+<!-- KONIEC -->
+<div class="card hidden" id="endBox">
+  <h2>🧹 KONIEC RUNDY</h2>
+  <button onclick="newRound()">🔁 NOWA RUNDA</button>
 </div>
 
 </div>
@@ -109,138 +130,153 @@ button{
 /* 📦 BAZA */
 let db = JSON.parse(localStorage.getItem("db")) || [];
 
-/* 👥 GRACZE */
-let players=[];
-let index=0;
-let timer;
-let time=60;
+/* 👥 */
+let players = [];
+let index = 0;
 
-/* 🎭 IMPOS TOR */
-let impostorIndex=-1;
+/* 🎭 */
+let impostors = [];
+let currentItem = null;
 
-/* ➕ DODAJ */
+/* ➕ */
 function addWord(){
-  let w=document.getElementById("word").value;
-  let h=document.getElementById("hint").value;
+  let w=document.getElementById("wordInput").value;
+  let h=document.getElementById("hintInput").value;
 
-  if(!w||!h)return;
+  if(!w||!h) return;
 
   db.push({word:w,hint:h});
   localStorage.setItem("db",JSON.stringify(db));
 
-  document.getElementById("word").value="";
-  document.getElementById("hint").value="";
+  document.getElementById("wordInput").value="";
+  document.getElementById("hintInput").value="";
 
   renderDB();
 }
 
-/* 📚 POKAŻ / UKRYJ */
+/* 📚 */
 function toggleDB(){
   let box=document.getElementById("dbView");
-
-  if(box.classList.contains("hidden")){
-    box.classList.remove("hidden");
-    renderDB();
-  }else{
-    box.classList.add("hidden");
-  }
+  box.classList.toggle("hidden");
+  renderDB();
 }
 
-/* 📚 RENDER + USUWANIE */
 function renderDB(){
   let box=document.getElementById("dbView");
 
   if(db.length===0){
-    box.innerHTML="<div>Brak haseł</div>";
+    box.innerHTML="Brak haseł";
     return;
   }
 
   box.innerHTML=db.map((d,i)=>
-    `<div>
-      🔤 ${d.word} → 🤫 ${d.hint}
-      <button class="smallBtn" onclick="deleteWord(${i})">X</button>
-    </div>`
+    `<div>🔤 ${d.word} → 🤫 ${d.hint}</div>`
   ).join("");
 }
 
-/* ❌ USUŃ HASŁO */
-function deleteWord(i){
-  db.splice(i,1);
-  localStorage.setItem("db",JSON.stringify(db));
-  renderDB();
-}
-
-/* 👥 GRACZE */
+/* 👥 */
 function addPlayer(){
   let n=document.getElementById("name").value;
-  if(!n)return;
+  if(!n) return;
   players.push(n);
   renderPlayers();
 }
 
 function renderPlayers(){
-  document.getElementById("players").innerHTML=
+  document.getElementById("players").innerHTML =
   players.map(p=>`<div>${p}</div>`).join("");
 }
 
 /* 🚀 START */
 function startGame(){
 
-  if(players.length<2){
+  if(players.length < 2){
     alert("Min 2 graczy!");
     return;
   }
 
-  if(db.length===0){
+  if(db.length === 0){
     alert("Dodaj hasła!");
     return;
   }
 
-  time=60;
-  index=0;
+  index = 0;
 
-  impostorIndex=Math.floor(Math.random()*players.length);
+  let impostorCount = parseInt(document.getElementById("impostorCount").value);
+  let knowEachOther = document.getElementById("knowEachOther").value;
+
+  /* 🔤 jedno hasło */
+  currentItem = db[Math.floor(Math.random() * db.length)];
+
+  /* 🎭 LOS IMPOS TORÓW */
+  impostors = [];
+
+  while(impostors.length < impostorCount){
+    let r = Math.floor(Math.random() * players.length);
+    if(!impostors.includes(r)){
+      impostors.push(r);
+    }
+  }
+
+  /* jeśli mają się znać */
+  if(knowEachOther === "yes"){
+    console.log("Impostorzy:", impostors);
+  }
 
   document.getElementById("gameBox").classList.remove("hidden");
+  document.getElementById("endBox").classList.add("hidden");
 
   show();
-  startTimer();
 }
 
-/* 👁 SHOW */
+/* 👁 */
 function show(){
 
-  let item=db[Math.floor(Math.random()*db.length)];
+  document.getElementById("turn").innerText = "👤 " + players[index];
 
-  document.getElementById("turn").innerText="👤 "+players[index];
+  let roleBox = document.getElementById("roleInfo");
 
-  if(index===impostorIndex){
-    document.getElementById("word").innerText="🤫 PODPOWIEDŹ: "+item.hint;
-  }else{
-    document.getElementById("word").innerText="🔤 HASŁO: "+item.word;
+  if(impostors.includes(index)){
+    roleBox.innerHTML =
+      "🚨 JESTEŚ IMPOSTOREM!<br>💡 Podpowiedź: " + currentItem.hint;
+
+    document.getElementById("word").innerText = "🤫 Udawaj!";
+  } else {
+    roleBox.innerText = "✅ Jesteś zwykłym graczem";
+    document.getElementById("word").innerText = "🔤 HASŁO: " + currentItem.word;
   }
 }
 
 /* NEXT */
 function next(){
   index++;
-  if(index>=players.length) index=0;
+
+  if(index >= players.length){
+    endGame();
+    return;
+  }
+
   show();
 }
 
-/* ⏱ TIMER */
-function startTimer(){
-  clearInterval(timer);
+/* 🧹 END */
+function endGame(){
+  document.getElementById("gameBox").classList.add("hidden");
+  document.getElementById("endBox").classList.remove("hidden");
 
-  timer=setInterval(()=>{
-    time--;
-    document.getElementById("timer").innerText="⏱ "+time;
+  document.getElementById("roleInfo").innerHTML = "";
+  document.getElementById("word").innerText = "";
+}
 
-    if(time<=0){
-      clearInterval(timer);
-      alert("KONIEC RUNDY!");
-    }
-  },1000);
+/* 🔁 NOWA RUNDA */
+function newRound(){
+  index = 0;
+  impostors = [];
+  currentItem = null;
+
+  document.getElementById("endBox").classList.add("hidden");
+
+  startGame();
 }
 
 </script>
