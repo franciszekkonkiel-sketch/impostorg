@@ -1,9 +1,14 @@
+# IMPOSTOR GAME — FINAL WORKING VERSION
+
+Skopiuj CAŁOŚĆ do pliku `index.html`
+
+```html
 <!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Impostor FIXED</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impostor Game</title>
 
 <style>
 body{
@@ -14,20 +19,24 @@ body{
   text-align:center;
 }
 
-.container{max-width:850px;margin:auto;padding:15px;}
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:15px;
+}
 
 .card{
   background:rgba(255,255,255,0.08);
   margin:10px;
   padding:15px;
-  border-radius:12px;
+  border-radius:14px;
 }
 
 input,select,button{
   padding:10px;
   margin:5px;
-  border-radius:8px;
   border:none;
+  border-radius:10px;
 }
 
 button{
@@ -37,18 +46,20 @@ button{
   cursor:pointer;
 }
 
-.hidden{display:none;}
+.hidden{
+  display:none;
+}
 
 .grid{
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:10px;
+  gap:15px;
 }
 
-.player{
-  width:90px;
-  height:90px;
+.ball{
+  width:100px;
+  height:100px;
   border-radius:50%;
   background:#f97316;
   display:flex;
@@ -61,8 +72,10 @@ button{
 
 .popup{
   position:fixed;
-  top:0;left:0;
-  width:100%;height:100%;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
   background:black;
   display:flex;
   flex-direction:column;
@@ -71,8 +84,14 @@ button{
   z-index:999;
 }
 
-.table{
-  text-align:left;
+.dbItem{
+  background:rgba(255,255,255,0.05);
+  padding:8px;
+  margin:5px 0;
+  border-radius:8px;
+}
+
+.scoreBox{
   margin-top:10px;
   background:rgba(255,255,255,0.05);
   padding:10px;
@@ -80,26 +99,31 @@ button{
 }
 </style>
 </head>
-
 <body>
 
-<h1>🎭 IMPOSTOR FIXED</h1>
+<h1>🎭 IMPOSTOR GAME FINAL</h1>
 
 <div class="container">
 
 <div class="card">
   <h3>⚙️ Ustawienia</h3>
-  <input type="number" id="impCount" value="1" min="1">
+
+  <label>Ilu impostorów?</label><br>
+  <input type="number" id="impCount" value="1" min="1"><br><br>
+
+  <label>Czy impostorzy się znają?</label><br>
   <select id="knows">
-    <option value="yes">Impostorzy się znają</option>
-    <option value="no">Nie znają się</option>
+    <option value="yes">Tak</option>
+    <option value="no">Nie</option>
   </select>
 </div>
 
 <div class="card">
-  <h3>📚 Hasła</h3>
-  <input id="word" placeholder="hasło">
-  <input id="hint" placeholder="podpowiedź">
+  <h3>📚 Baza haseł</h3>
+
+  <input id="wordInput" placeholder="Hasło">
+  <input id="hintInput" placeholder="Podpowiedź">
+
   <button onclick="addWord()">Dodaj</button>
 
   <div id="db"></div>
@@ -107,207 +131,328 @@ button{
 
 <div class="card">
   <h3>👥 Gracze</h3>
-  <input id="name" placeholder="imię">
+
+  <input id="nameInput" placeholder="Imię">
   <button onclick="addPlayer()">Dodaj</button>
+
+  <div id="playersList"></div>
 </div>
 
 <div class="card">
   <button onclick="startGame()">START</button>
 </div>
 
-<div class="card">
-  <div id="playersList"></div>
-</div>
-
-<div class="card hidden" id="game">
-  <h2>🏀 Kliknij gracza</h2>
+<div class="card hidden" id="gameBox">
+  <h2>🏀 Kliknij swoją piłkę</h2>
   <div class="grid" id="grid"></div>
 </div>
 
 <div class="popup hidden" id="popup">
-  <h2 id="pName"></h2>
-  <p id="pRole"></p>
+  <h2 id="popupName"></h2>
+  <div id="popupRole"></div>
+  <br>
   <button onclick="closePopup()">OK</button>
 </div>
 
 <div class="card hidden" id="voteBox">
-  <h2>🗳️ GŁOSOWANIE</h2>
+  <h2>🗳️ Głosowanie</h2>
   <div id="voteList"></div>
-  <button onclick="finishVote()">Zakończ</button>
+  <button onclick="finishVote()">Zakończ głosowanie</button>
 </div>
 
-<div class="card hidden" id="end">
+<div class="card hidden" id="endBox">
   <h2 id="result"></h2>
-  <div id="score"></div>
-  <button onclick="restart()">Nowa runda</button>
+  <div class="scoreBox" id="scoreBoard"></div>
+  <button onclick="restartGame()">Nowa runda</button>
 </div>
 
 </div>
 
 <script>
 
+/* ELEMENTY */
+const dbDiv = document.getElementById("db");
+const playersList = document.getElementById("playersList");
+const gameBox = document.getElementById("gameBox");
+const grid = document.getElementById("grid");
+const popup = document.getElementById("popup");
+const popupName = document.getElementById("popupName");
+const popupRole = document.getElementById("popupRole");
+const voteBox = document.getElementById("voteBox");
+const voteList = document.getElementById("voteList");
+const endBox = document.getElementById("endBox");
+const result = document.getElementById("result");
+const scoreBoard = document.getElementById("scoreBoard");
+
+/* INPUTY */
+const wordInput = document.getElementById("wordInput");
+const hintInput = document.getElementById("hintInput");
+const nameInput = document.getElementById("nameInput");
+const impCount = document.getElementById("impCount");
+const knows = document.getElementById("knows");
+
+/* DANE */
 let db = JSON.parse(localStorage.getItem("db")) || [];
 let players = [];
 let impostors = [];
-let current = null;
-let shown = 0;
+let currentWord = null;
+let shownPlayers = [];
 let votes = {};
 let scores = {};
 
-/* HASŁA */
+/* BAZA */
 function addWord(){
-  if(!word.value||!hint.value) return;
-  db.push({w:word.value,h:hint.value});
-  localStorage.setItem("db",JSON.stringify(db));
-  word.value=""; hint.value="";
+
+  const w = wordInput.value.trim();
+  const h = hintInput.value.trim();
+
+  if(!w || !h) return;
+
+  db.push({word:w, hint:h});
+
+  localStorage.setItem("db", JSON.stringify(db));
+
+  wordInput.value = "";
+  hintInput.value = "";
+
   renderDB();
 }
 
 function renderDB(){
-  dbDiv.innerHTML=db.map((d,i)=>
-    `<div>${d.w} → ${d.h}
-    <button onclick="delWord(${i})">X</button></div>`
+
+  if(db.length === 0){
+    dbDiv.innerHTML = "Brak haseł";
+    return;
+  }
+
+  dbDiv.innerHTML = db.map((item,index)=>
+    `
+    <div class="dbItem">
+      🔤 ${item.word} → 💡 ${item.hint}
+      <button onclick="deleteWord(${index})">X</button>
+    </div>
+    `
   ).join("");
 }
 
-function delWord(i){
-  db.splice(i,1);
-  localStorage.setItem("db",JSON.stringify(db));
+function deleteWord(index){
+
+  db.splice(index,1);
+
+  localStorage.setItem("db", JSON.stringify(db));
+
   renderDB();
 }
 
 /* GRACZE */
 function addPlayer(){
-  if(!name.value) return;
-  players.push(name.value);
-  scores[name.value]=scores[name.value]||0;
-  name.value="";
+
+  const name = nameInput.value.trim();
+
+  if(!name) return;
+
+  players.push(name);
+
+  if(!scores[name]){
+    scores[name] = 0;
+  }
+
+  nameInput.value = "";
+
   renderPlayers();
 }
 
 function renderPlayers(){
-  playersList.innerHTML=players.map(p=>"👤 "+p).join("<br>");
+
+  playersList.innerHTML = players.map(p=>`👤 ${p}`).join("<br>");
 }
 
 /* START */
 function startGame(){
 
-  if(players.length<2 || db.length===0)
-    return alert("Dodaj dane");
-
-  current=db[Math.floor(Math.random()*db.length)];
-
-  let count=Math.min(+impCount.value,players.length);
-
-  impostors=[];
-
-  while(impostors.length<count){
-    let r=Math.floor(Math.random()*players.length);
-    if(!impostors.includes(r)) impostors.push(r);
+  if(players.length < 2){
+    alert("Dodaj minimum 2 graczy");
+    return;
   }
 
-  shown=0;
-  votes={};
+  if(db.length === 0){
+    alert("Dodaj hasła");
+    return;
+  }
 
-  game.classList.remove("hidden");
+  currentWord = db[Math.floor(Math.random()*db.length)];
+
+  impostors = [];
+
+  const count = Math.min(parseInt(impCount.value), players.length-1);
+
+  while(impostors.length < count){
+
+    const randomIndex = Math.floor(Math.random()*players.length);
+
+    if(!impostors.includes(randomIndex)){
+      impostors.push(randomIndex);
+    }
+  }
+
+  shownPlayers = [];
+  votes = {};
+
+  gameBox.classList.remove("hidden");
   voteBox.classList.add("hidden");
-  end.classList.add("hidden");
+  endBox.classList.add("hidden");
 
   renderGrid();
 }
 
-/* GRID */
+/* PIŁKI */
 function renderGrid(){
-  grid.innerHTML=players.map((p,i)=>
-    `<div class='player' onclick='show(${i})'>🏀${p}</div>`
+
+  grid.innerHTML = players.map((player,index)=>
+    `
+    <div class="ball" onclick="showRole(${index})">
+      🏀
+      <div>${player}</div>
+    </div>
+    `
   ).join("");
 }
 
-/* SHOW */
-function show(i){
+/* ROLA */
+function showRole(index){
+
+  if(shownPlayers.includes(index)) return;
 
   popup.classList.remove("hidden");
 
-  let isImp=impostors.includes(i);
-  let impNames=impostors.map(x=>players[x]);
+  popupName.innerText = players[index];
 
-  pName.innerText=players[i];
+  const isImpostor = impostors.includes(index);
 
-  if(isImp){
+  if(isImpostor){
 
-    let extra="";
-    if(knows.value==="yes"){
-      extra="<br>🤝 "+impNames.filter(n=>n!==players[i]).join(", ");
+    let text = `
+      <h2>🚨 JESTEŚ IMPOSTOREM</h2>
+      <p>💡 Podpowiedź: ${currentWord.hint}</p>
+    `;
+
+    if(knows.value === "yes"){
+
+      const otherImpostors = impostors
+        .filter(i=>i!==index)
+        .map(i=>players[i]);
+
+      if(otherImpostors.length > 0){
+        text += `<p>🤝 Inni impostorzy: ${otherImpostors.join(", ")}</p>`;
+      }
     }
 
-    pRole.innerHTML="🚨 IMPOSTOR<br>"+current.h+extra;
+    popupRole.innerHTML = text;
 
-  } else {
-    pRole.innerHTML="🔤 HASŁO: "+current.w;
+  }else{
+
+    popupRole.innerHTML = `
+      <h2>✅ Jesteś zwykłym graczem</h2>
+      <p>🔤 HASŁO: ${currentWord.word}</p>
+    `;
   }
+
+  shownPlayers.push(index);
 }
 
-/* 🔥 FIXED CLOSE (TO JEST KLUCZ) */
+/* ZAMKNIĘCIE */
 function closePopup(){
 
   popup.classList.add("hidden");
 
-  shown++;
-
-  if(shown >= players.length){
+  if(shownPlayers.length >= players.length){
 
     setTimeout(()=>{
-      startVote();
+      startVoting();
     },200);
-
   }
 }
 
-/* VOTE */
-function startVote(){
+/* GŁOSOWANIE */
+function startVoting(){
 
   voteBox.classList.remove("hidden");
 
-  voteList.innerHTML=players.map((p,i)=>
-    `<div>${p} <button onclick='vote(${i})'>GŁOS</button></div>`
+  voteList.innerHTML = players.map((player,index)=>
+    `
+    <div>
+      ${player}
+      <button onclick="votePlayer(${index})">GŁOS</button>
+    </div>
+    `
   ).join("");
 }
 
-function vote(i){
-  votes[i]=(votes[i]||0)+1;
+function votePlayer(index){
+
+  votes[index] = (votes[index] || 0) + 1;
+
+  alert(`Oddano głos na ${players[index]}`);
 }
 
-/* END */
+/* KONIEC */
 function finishVote(){
 
-  let max=0;
-  let out=0;
+  let maxVotes = -1;
+  let eliminated = null;
 
-  for(let i in votes){
-    if(votes[i]>max){
-      max=votes[i];
-      out=i;
+  for(const index in votes){
+
+    if(votes[index] > maxVotes){
+      maxVotes = votes[index];
+      eliminated = parseInt(index);
     }
   }
 
-  out=+out;
+  if(eliminated === null){
+    result.innerText = "❌ Nikt nie został wyeliminowany";
+  }
+  else if(impostors.includes(eliminated)){
 
-  if(impostors.includes(out)){
-    result.innerText="🚨 IMPOSTOR: "+players[out];
-    scores[players[out]]=(scores[players[out]]||0)+2;
-  } else {
-    result.innerText="❌ niewinny: "+players[out];
+    result.innerText = `🚨 Wyrzucono impostora: ${players[eliminated]}`;
+
+    players.forEach((player,index)=>{
+      if(!impostors.includes(index)){
+        scores[player] += 1;
+      }
+    });
+
+  }else{
+
+    result.innerText = `❌ Wyrzucono niewinnego: ${players[eliminated]}`;
+
+    impostors.forEach(index=>{
+      scores[players[index]] += 2;
+    });
   }
 
-  score.innerHTML=players.map(p=>`${p}: ${scores[p]||0}`).join("<br>");
+  renderScores();
 
   voteBox.classList.add("hidden");
-  end.classList.remove("hidden");
+  endBox.classList.remove("hidden");
 }
 
-/* RESET */
-function restart(){
-  location.reload();
+/* RANKING */
+function renderScores(){
+
+  scoreBoard.innerHTML = Object.entries(scores)
+    .sort((a,b)=>b[1]-a[1])
+    .map(item=>`${item[0]}: ${item[1]} pkt`)
+    .join("<br>");
+}
+
+/* RESTART */
+function restartGame(){
+
+  shownPlayers = [];
+  votes = {};
+
+  startGame();
 }
 
 /* INIT */
@@ -318,3 +463,5 @@ renderPlayers();
 
 </body>
 </html>
+```
+
