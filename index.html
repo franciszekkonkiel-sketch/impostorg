@@ -1,224 +1,221 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Impostor Online</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#0b1220;
-  color:white;
-  text-align:center;
-}
-
-.container{
-  max-width:900px;
-  margin:auto;
-  padding:15px;
-}
-
-.card{
-  background:rgba(255,255,255,0.08);
-  margin:10px;
-  padding:15px;
-  border-radius:14px;
-}
-
-input,button{
-  padding:10px;
-  margin:5px;
-  border:none;
-  border-radius:10px;
-}
-
-button{
-  background:#6366f1;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-.hidden{
-  display:none;
-}
-
-.players{
-  margin-top:10px;
-}
-</style>
+  <meta charset="UTF-8" />
+  <title>Impostor Game PRO+</title>
+  <style>
+    body { font-family: Arial; max-width: 750px; margin: auto; }
+    button { margin: 4px; }
+    .card { padding: 10px; border: 1px solid #ccc; margin-top: 10px; }
+  </style>
 </head>
 <body>
 
-<h1>🎭 IMPOSTOR ONLINE</h1>
+<h2>🎮 Impostor Game PRO+</h2>
 
-<div class="container">
+<input id="code" placeholder="room code">
+<input id="nick" placeholder="nick">
+<br>
+<button onclick="createRoom()">Create room</button>
+<button onclick="joinRoom()">Join room</button>
+<button onclick="startGame()">Start game</button>
+<button onclick="startVoting()">Start voting</button>
 
 <div class="card">
-  <h2>👤 Nick</h2>
-  <input id="nickname" placeholder="Twój nick">
+  <h3 id="roomTitle">No room</h3>
+  <div id="players"></div>
 </div>
 
 <div class="card">
-  <h2>🏠 Pokój</h2>
-
-  <button onclick="createRoom()">Stwórz pokój</button>
-
-  <br><br>
-
-  <input id="roomCode" placeholder="Kod pokoju">
-  <button onclick="joinRoom()">Dołącz</button>
+  <h3>Game</h3>
+  <div id="role"></div>
 </div>
 
-<div class="card hidden" id="roomBox">
-  <h2 id="roomTitle"></h2>
-
-  <div class="players" id="players"></div>
+<div class="card">
+  <h3>Voting 🗳️</h3>
+  <div id="votes"></div>
 </div>
 
+<div class="card">
+  <h3>Vote player</h3>
+  <div id="voteButtons"></div>
 </div>
 
-<script>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-/* 🔥 SUPABASE */
-const supabase = window.supabase.createClient(
+const supabase = createClient(
   "https://inbdtzacrdtzkuldmedj.supabase.co/rest/v1/",
   "sb_publishable_NJcYRaw09I5ZFbDDIEyeJg_tTdaG1NE"
 );
 
-/* DATA */
 let currentRoom = null;
+let nick = null;
+let channel = null;
+
+const words = ["pizza","car","school","computer","banana","football"];
 
 /* CREATE ROOM */
-async function createRoom(){
+window.createRoom = async () => {
+  const code = document.getElementById("code").value;
+  nick = document.getElementById("nick").value;
 
-  const code = Math.random()
-    .toString(36)
-    .substring(2,7)
-    .toUpperCase();
+  const { error } = await supabase.from("rooms").insert({
+    code,
+    players: [nick],
+    word: words[Math.floor(Math.random() * words.length)],
+    impostor: null,
+    started: false,
+    votes: {},
+    eliminated: []
+  });
 
-  const nick = document.getElementById("nickname").value;
-
-  if(!nick){
-    alert("Wpisz nick");
-    return;
-  }
-
-  await supabase
-    .from("rooms")
-    .insert({
-      code:code,
-      players:[nick],
-      game:{}
-    });
+  if (error) return alert(error.message);
 
   currentRoom = code;
-
   openRoom(code);
-}
+};
 
 /* JOIN */
-async function joinRoom(){
+window.joinRoom = async () => {
+  const code = document.getElementById("code").value;
+  nick = document.getElementById("nick").value;
 
-  const code = document
-    .getElementById("roomCode")
-    .value
-    .toUpperCase();
-
-  const nick = document
-    .getElementById("nickname")
-    .value;
-
-  if(!nick || !code){
-    alert("Wpisz dane");
-    return;
-  }
-
-  let { data } = await supabase
+  const { data } = await supabase
     .from("rooms")
     .select("*")
-    .eq("code",code)
+    .eq("code", code)
     .single();
 
-  if(!data){
-    alert("Pokój nie istnieje");
-    return;
-  }
+  if (!data) return alert("Room not found");
 
   let players = data.players || [];
+  if (!players.includes(nick)) players.push(nick);
 
-  players.push(nick);
-
-  await supabase
-    .from("rooms")
-    .update({ players:players })
-    .eq("code",code);
+  await supabase.from("rooms")
+    .update({ players })
+    .eq("code", code);
 
   currentRoom = code;
-
   openRoom(code);
-}
+};
 
-/* OPEN ROOM */
-async function openRoom(code){
+/* START GAME */
+window.startGame = async () => {
+  const { data } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("code", currentRoom)
+    .single();
 
-  document
-    .getElementById("roomBox")
-    .classList
-    .remove("hidden");
+  const players = data.players;
+  const impostor = players[Math.floor(Math.random() * players.length)];
 
-  document
-    .getElementById("roomTitle")
-    .innerText = "Pokój: " + code;
+  await supabase.from("rooms")
+    .update({ impostor, started: true, votes: {} })
+    .eq("code", currentRoom);
+};
 
-  loadPlayers(code);
+/* START VOTING */
+window.startVoting = async () => {
+  await supabase.from("rooms")
+    .update({ votes: {} })
+    .eq("code", currentRoom);
+};
 
+/* VOTE PLAYER */
+window.votePlayer = async (target) => {
+  const { data } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("code", currentRoom)
+    .single();
+
+  let votes = data.votes || {};
+
+  votes[target] = (votes[target] || 0) + 1;
+
+  await supabase.from("rooms")
+    .update({ votes })
+    .eq("code", currentRoom);
+};
+
+/* ELIMINATE HIGHEST */
+window.eliminate = async () => {
+  const { data } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("code", currentRoom)
+    .single();
+
+  let votes = data.votes || {};
+  let players = data.players || [];
+
+  let maxPlayer = Object.keys(votes).reduce((a,b)=>
+    votes[a] > votes[b] ? a : b
+  );
+
+  let eliminated = data.eliminated || [];
+  eliminated.push(maxPlayer);
+
+  players = players.filter(p => p !== maxPlayer);
+
+  await supabase.from("rooms")
+    .update({ players, eliminated, votes: {} })
+    .eq("code", currentRoom);
+};
+
+/* OPEN */
+function openRoom(code){
+  document.getElementById("roomTitle").innerText = "Room: " + code;
+  loadRoom(code);
   listenRoom(code);
 }
 
-/* LOAD PLAYERS */
-async function loadPlayers(code){
-
-  let { data } = await supabase
+/* LOAD */
+async function loadRoom(code){
+  const { data } = await supabase
     .from("rooms")
     .select("*")
-    .eq("code",code)
+    .eq("code", code)
     .single();
 
-  document
-    .getElementById("players")
-    .innerHTML = data.players
-      .map(p=>"👤 "+p)
-      .join("<br>");
+  if (!data) return;
+
+  document.getElementById("players").innerHTML =
+    (data.players || []).map(p => "👤 " + p).join("<br>");
+
+  document.getElementById("votes").innerHTML =
+    JSON.stringify(data.votes || {}, null, 2);
+
+  document.getElementById("voteButtons").innerHTML =
+    (data.players || []).map(p =>
+      `<button onclick="votePlayer('${p}')">Vote ${p}</button>`
+    ).join("<br>");
+
+  if (data.started) {
+    if (data.impostor === nick) {
+      document.getElementById("role").innerText = "😈 IMPOSTOR";
+    } else {
+      document.getElementById("role").innerText = "Word: " + data.word;
+    }
+  }
 }
 
 /* REALTIME */
 function listenRoom(code){
+  if (channel) supabase.removeChannel(channel);
 
-  supabase
-    .channel("room-"+code)
-    .on(
-      "postgres_changes",
+  channel = supabase
+    .channel("room-" + code)
+    .on("postgres_changes",
       {
-        event:"UPDATE",
-        schema:"public",
-        table:"rooms"
+        event: "UPDATE",
+        schema: "public",
+        table: "rooms",
+        filter: `code=eq.${code}`
       },
-      payload=>{
-
-        if(payload.new.code === code){
-
-          document
-            .getElementById("players")
-            .innerHTML = payload.new.players
-              .map(p=>"👤 "+p)
-              .join("<br>");
-        }
-      }
+      () => loadRoom(code)
     )
     .subscribe();
 }
