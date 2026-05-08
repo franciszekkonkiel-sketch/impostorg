@@ -1,14 +1,11 @@
-# IMPOSTOR GAME — FINAL WORKING VERSION
-
-Skopiuj CAŁOŚĆ do pliku `index.html`
-
-```html
 <!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Impostor Game</title>
+<title>Impostor Online</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
@@ -32,7 +29,7 @@ body{
   border-radius:14px;
 }
 
-input,select,button{
+input,button{
   padding:10px;
   margin:5px;
   border:none;
@@ -50,418 +47,184 @@ button{
   display:none;
 }
 
-.grid{
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-  gap:15px;
-}
-
-.ball{
-  width:100px;
-  height:100px;
-  border-radius:50%;
-  background:#f97316;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-.popup{
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:black;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  z-index:999;
-}
-
-.dbItem{
-  background:rgba(255,255,255,0.05);
-  padding:8px;
-  margin:5px 0;
-  border-radius:8px;
-}
-
-.scoreBox{
+.players{
   margin-top:10px;
-  background:rgba(255,255,255,0.05);
-  padding:10px;
-  border-radius:10px;
 }
 </style>
 </head>
 <body>
 
-<h1>🎭 IMPOSTOR GAME FINAL</h1>
+<h1>🎭 IMPOSTOR ONLINE</h1>
 
 <div class="container">
 
 <div class="card">
-  <h3>⚙️ Ustawienia</h3>
-
-  <label>Ilu impostorów?</label><br>
-  <input type="number" id="impCount" value="1" min="1"><br><br>
-
-  <label>Czy impostorzy się znają?</label><br>
-  <select id="knows">
-    <option value="yes">Tak</option>
-    <option value="no">Nie</option>
-  </select>
+  <h2>👤 Nick</h2>
+  <input id="nickname" placeholder="Twój nick">
 </div>
 
 <div class="card">
-  <h3>📚 Baza haseł</h3>
+  <h2>🏠 Pokój</h2>
 
-  <input id="wordInput" placeholder="Hasło">
-  <input id="hintInput" placeholder="Podpowiedź">
+  <button onclick="createRoom()">Stwórz pokój</button>
 
-  <button onclick="addWord()">Dodaj</button>
+  <br><br>
 
-  <div id="db"></div>
+  <input id="roomCode" placeholder="Kod pokoju">
+  <button onclick="joinRoom()">Dołącz</button>
 </div>
 
-<div class="card">
-  <h3>👥 Gracze</h3>
+<div class="card hidden" id="roomBox">
+  <h2 id="roomTitle"></h2>
 
-  <input id="nameInput" placeholder="Imię">
-  <button onclick="addPlayer()">Dodaj</button>
-
-  <div id="playersList"></div>
-</div>
-
-<div class="card">
-  <button onclick="startGame()">START</button>
-</div>
-
-<div class="card hidden" id="gameBox">
-  <h2>🏀 Kliknij swoją piłkę</h2>
-  <div class="grid" id="grid"></div>
-</div>
-
-<div class="popup hidden" id="popup">
-  <h2 id="popupName"></h2>
-  <div id="popupRole"></div>
-  <br>
-  <button onclick="closePopup()">OK</button>
-</div>
-
-<div class="card hidden" id="voteBox">
-  <h2>🗳️ Głosowanie</h2>
-  <div id="voteList"></div>
-  <button onclick="finishVote()">Zakończ głosowanie</button>
-</div>
-
-<div class="card hidden" id="endBox">
-  <h2 id="result"></h2>
-  <div class="scoreBox" id="scoreBoard"></div>
-  <button onclick="restartGame()">Nowa runda</button>
+  <div class="players" id="players"></div>
 </div>
 
 </div>
 
 <script>
 
-/* ELEMENTY */
-const dbDiv = document.getElementById("db");
-const playersList = document.getElementById("playersList");
-const gameBox = document.getElementById("gameBox");
-const grid = document.getElementById("grid");
-const popup = document.getElementById("popup");
-const popupName = document.getElementById("popupName");
-const popupRole = document.getElementById("popupRole");
-const voteBox = document.getElementById("voteBox");
-const voteList = document.getElementById("voteList");
-const endBox = document.getElementById("endBox");
-const result = document.getElementById("result");
-const scoreBoard = document.getElementById("scoreBoard");
+/* 🔥 SUPABASE */
+const supabase = window.supabase.createClient(
+  "YOUR_SUPABASE_URL",
+  "YOUR_SUPABASE_KEY"
+);
 
-/* INPUTY */
-const wordInput = document.getElementById("wordInput");
-const hintInput = document.getElementById("hintInput");
-const nameInput = document.getElementById("nameInput");
-const impCount = document.getElementById("impCount");
-const knows = document.getElementById("knows");
+/* DATA */
+let currentRoom = null;
 
-/* DANE */
-let db = JSON.parse(localStorage.getItem("db")) || [];
-let players = [];
-let impostors = [];
-let currentWord = null;
-let shownPlayers = [];
-let votes = {};
-let scores = {};
+/* CREATE ROOM */
+async function createRoom(){
 
-/* BAZA */
-function addWord(){
+  const code = Math.random()
+    .toString(36)
+    .substring(2,7)
+    .toUpperCase();
 
-  const w = wordInput.value.trim();
-  const h = hintInput.value.trim();
+  const nick = document.getElementById("nickname").value;
 
-  if(!w || !h) return;
-
-  db.push({word:w, hint:h});
-
-  localStorage.setItem("db", JSON.stringify(db));
-
-  wordInput.value = "";
-  hintInput.value = "";
-
-  renderDB();
-}
-
-function renderDB(){
-
-  if(db.length === 0){
-    dbDiv.innerHTML = "Brak haseł";
+  if(!nick){
+    alert("Wpisz nick");
     return;
   }
 
-  dbDiv.innerHTML = db.map((item,index)=>
-    `
-    <div class="dbItem">
-      🔤 ${item.word} → 💡 ${item.hint}
-      <button onclick="deleteWord(${index})">X</button>
-    </div>
-    `
-  ).join("");
-}
-
-function deleteWord(index){
-
-  db.splice(index,1);
-
-  localStorage.setItem("db", JSON.stringify(db));
-
-  renderDB();
-}
-
-/* GRACZE */
-function addPlayer(){
-
-  const name = nameInput.value.trim();
-
-  if(!name) return;
-
-  players.push(name);
-
-  if(!scores[name]){
-    scores[name] = 0;
-  }
-
-  nameInput.value = "";
-
-  renderPlayers();
-}
-
-function renderPlayers(){
-
-  playersList.innerHTML = players.map(p=>`👤 ${p}`).join("<br>");
-}
-
-/* START */
-function startGame(){
-
-  if(players.length < 2){
-    alert("Dodaj minimum 2 graczy");
-    return;
-  }
-
-  if(db.length === 0){
-    alert("Dodaj hasła");
-    return;
-  }
-
-  currentWord = db[Math.floor(Math.random()*db.length)];
-
-  impostors = [];
-
-  const count = Math.min(parseInt(impCount.value), players.length-1);
-
-  while(impostors.length < count){
-
-    const randomIndex = Math.floor(Math.random()*players.length);
-
-    if(!impostors.includes(randomIndex)){
-      impostors.push(randomIndex);
-    }
-  }
-
-  shownPlayers = [];
-  votes = {};
-
-  gameBox.classList.remove("hidden");
-  voteBox.classList.add("hidden");
-  endBox.classList.add("hidden");
-
-  renderGrid();
-}
-
-/* PIŁKI */
-function renderGrid(){
-
-  grid.innerHTML = players.map((player,index)=>
-    `
-    <div class="ball" onclick="showRole(${index})">
-      🏀
-      <div>${player}</div>
-    </div>
-    `
-  ).join("");
-}
-
-/* ROLA */
-function showRole(index){
-
-  if(shownPlayers.includes(index)) return;
-
-  popup.classList.remove("hidden");
-
-  popupName.innerText = players[index];
-
-  const isImpostor = impostors.includes(index);
-
-  if(isImpostor){
-
-    let text = `
-      <h2>🚨 JESTEŚ IMPOSTOREM</h2>
-      <p>💡 Podpowiedź: ${currentWord.hint}</p>
-    `;
-
-    if(knows.value === "yes"){
-
-      const otherImpostors = impostors
-        .filter(i=>i!==index)
-        .map(i=>players[i]);
-
-      if(otherImpostors.length > 0){
-        text += `<p>🤝 Inni impostorzy: ${otherImpostors.join(", ")}</p>`;
-      }
-    }
-
-    popupRole.innerHTML = text;
-
-  }else{
-
-    popupRole.innerHTML = `
-      <h2>✅ Jesteś zwykłym graczem</h2>
-      <p>🔤 HASŁO: ${currentWord.word}</p>
-    `;
-  }
-
-  shownPlayers.push(index);
-}
-
-/* ZAMKNIĘCIE */
-function closePopup(){
-
-  popup.classList.add("hidden");
-
-  if(shownPlayers.length >= players.length){
-
-    setTimeout(()=>{
-      startVoting();
-    },200);
-  }
-}
-
-/* GŁOSOWANIE */
-function startVoting(){
-
-  voteBox.classList.remove("hidden");
-
-  voteList.innerHTML = players.map((player,index)=>
-    `
-    <div>
-      ${player}
-      <button onclick="votePlayer(${index})">GŁOS</button>
-    </div>
-    `
-  ).join("");
-}
-
-function votePlayer(index){
-
-  votes[index] = (votes[index] || 0) + 1;
-
-  alert(`Oddano głos na ${players[index]}`);
-}
-
-/* KONIEC */
-function finishVote(){
-
-  let maxVotes = -1;
-  let eliminated = null;
-
-  for(const index in votes){
-
-    if(votes[index] > maxVotes){
-      maxVotes = votes[index];
-      eliminated = parseInt(index);
-    }
-  }
-
-  if(eliminated === null){
-    result.innerText = "❌ Nikt nie został wyeliminowany";
-  }
-  else if(impostors.includes(eliminated)){
-
-    result.innerText = `🚨 Wyrzucono impostora: ${players[eliminated]}`;
-
-    players.forEach((player,index)=>{
-      if(!impostors.includes(index)){
-        scores[player] += 1;
-      }
+  await supabase
+    .from("rooms")
+    .insert({
+      code:code,
+      players:[nick],
+      game:{}
     });
 
-  }else{
+  currentRoom = code;
 
-    result.innerText = `❌ Wyrzucono niewinnego: ${players[eliminated]}`;
+  openRoom(code);
+}
 
-    impostors.forEach(index=>{
-      scores[players[index]] += 2;
-    });
+/* JOIN */
+async function joinRoom(){
+
+  const code = document
+    .getElementById("roomCode")
+    .value
+    .toUpperCase();
+
+  const nick = document
+    .getElementById("nickname")
+    .value;
+
+  if(!nick || !code){
+    alert("Wpisz dane");
+    return;
   }
 
-  renderScores();
+  let { data } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("code",code)
+    .single();
 
-  voteBox.classList.add("hidden");
-  endBox.classList.remove("hidden");
+  if(!data){
+    alert("Pokój nie istnieje");
+    return;
+  }
+
+  let players = data.players || [];
+
+  players.push(nick);
+
+  await supabase
+    .from("rooms")
+    .update({ players:players })
+    .eq("code",code);
+
+  currentRoom = code;
+
+  openRoom(code);
 }
 
-/* RANKING */
-function renderScores(){
+/* OPEN ROOM */
+async function openRoom(code){
 
-  scoreBoard.innerHTML = Object.entries(scores)
-    .sort((a,b)=>b[1]-a[1])
-    .map(item=>`${item[0]}: ${item[1]} pkt`)
-    .join("<br>");
+  document
+    .getElementById("roomBox")
+    .classList
+    .remove("hidden");
+
+  document
+    .getElementById("roomTitle")
+    .innerText = "Pokój: " + code;
+
+  loadPlayers(code);
+
+  listenRoom(code);
 }
 
-/* RESTART */
-function restartGame(){
+/* LOAD PLAYERS */
+async function loadPlayers(code){
 
-  shownPlayers = [];
-  votes = {};
+  let { data } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("code",code)
+    .single();
 
-  startGame();
+  document
+    .getElementById("players")
+    .innerHTML = data.players
+      .map(p=>"👤 "+p)
+      .join("<br>");
 }
 
-/* INIT */
-renderDB();
-renderPlayers();
+/* REALTIME */
+function listenRoom(code){
+
+  supabase
+    .channel("room-"+code)
+    .on(
+      "postgres_changes",
+      {
+        event:"UPDATE",
+        schema:"public",
+        table:"rooms"
+      },
+      payload=>{
+
+        if(payload.new.code === code){
+
+          document
+            .getElementById("players")
+            .innerHTML = payload.new.players
+              .map(p=>"👤 "+p)
+              .join("<br>");
+        }
+      }
+    )
+    .subscribe();
+}
 
 </script>
-
 </body>
 </html>
-```
+
 
