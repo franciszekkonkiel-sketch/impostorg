@@ -44,10 +44,11 @@
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-const supabase = createClient(
-  "https://inbdtzacrdtzkuldmedj.supabase.co/rest/v1/",
+  const supabase = createClient(
+  "https://inbdtzacrdtzkuldmedj.supabase.co",
   "sb_publishable_NJcYRaw09I5ZFbDDIEyeJg_tTdaG1NE"
 );
+
 
 let currentRoom = null;
 let nick = null;
