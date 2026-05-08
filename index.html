@@ -1,180 +1,551 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
 <meta charset="UTF-8">
-<title>Impostor Game FINAL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impostor Ultimate</title>
+
 <style>
-body { font-family: Arial; max-width: 800px; margin:auto; }
-.card { border:1px solid #ccc; padding:10px; margin-top:10px; }
-button { margin:4px; }
+
+body{
+  margin:0;
+  font-family:Arial;
+  background:radial-gradient(circle at top,#1e293b,#0b1220);
+  color:white;
+  text-align:center;
+}
+
+.container{
+  max-width:800px;
+  margin:auto;
+  padding:15px;
+}
+
+.card{
+  background:rgba(255,255,255,0.07);
+  padding:15px;
+  margin:12px;
+  border-radius:20px;
+  box-shadow:0 0 20px rgba(99,102,241,0.2);
+}
+
+input,button,select{
+  padding:10px;
+  margin:5px;
+  border:none;
+  border-radius:12px;
+}
+
+button{
+  background:linear-gradient(45deg,#6366f1,#8b5cf6);
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+button:hover{
+  transform:scale(1.03);
+}
+
+.ball{
+  width:160px;
+  height:160px;
+  border-radius:50%;
+  background:linear-gradient(45deg,#f59e0b,#f97316);
+  margin:auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:black;
+  font-weight:bold;
+  font-size:22px;
+  box-shadow:0 0 25px rgba(245,158,11,0.5);
+}
+
+.hidden{
+  display:none;
+}
+
+.black,
+.meeting{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  z-index:999;
+}
+
+.black{
+  background:black;
+  font-size:34px;
+}
+
+.meeting{
+  background:rgba(0,0,0,0.96);
+  font-size:28px;
+}
+
+#timer{
+  color:#facc15;
+  font-size:22px;
+}
+
+.wordItem{
+  margin:8px;
+  padding:10px;
+  background:rgba(255,255,255,0.06);
+  border-radius:12px;
+}
+
 </style>
 </head>
 <body>
 
-<h2>🎮 Impostor Game FINAL</h2>
-
-<div class="card">
-  <input id="code" placeholder="room code">
-  <input id="nick" placeholder="nick">
-  <br>
-  <button onclick="createRoom()">Create</button>
-  <button onclick="joinRoom()">Join</button>
-  <button onclick="startGame()">Start</button>
+<div class="black" id="black">
+  🔒 PASS PHONE
 </div>
 
-<div class="card">
-  <h3 id="roomTitle">No room</h3>
-  <div id="players"></div>
+<div class="meeting" id="meeting">
+  <h1>🎬 START GRY</h1>
+  <p>💬 Rozmawiajcie!</p>
 </div>
 
+<h1>🎭 IMPOSTOR ULTIMATE</h1>
+
+<div class="container">
+
+<!-- SETTINGS -->
 <div class="card">
-  <h3>Role</h3>
-  <button onclick="showRole()">Reveal role</button>
-  <button onclick="hideRole()">Hide (pass phone)</button>
-  <div id="role"></div>
+
+<h3>⚙️ Ustawienia</h3>
+
+<label>Impostorzy:</label>
+
+<select id="impCount">
+  <option value="1">1</option>
+  <option value="2">2</option>
+</select>
+
+<label>Znają się?</label>
+
+<select id="know">
+  <option value="no">NIE</option>
+  <option value="yes">TAK</option>
+</select>
+
 </div>
 
+<!-- DATABASE -->
 <div class="card">
-  <h3>Host panel</h3>
-  <input id="word" placeholder="set word (host)">
-  <button onclick="setWord()">Set word</button>
+
+<h3>📚 Baza haseł</h3>
+
+<button onclick="toggleDB()">
+📖 Pokaż / ukryj
+</button>
+
+<div id="db" class="hidden">
+
+<input id="wordInput" placeholder="Hasło">
+<input id="hintInput" placeholder="Podpowiedź impostora">
+
+<button onclick="addWord()">
+➕ Dodaj
+</button>
+
+<button onclick="exportWords()">
+📤 Export
+</button>
+
+<input type="file" id="importFile">
+
+<button onclick="importWords()">
+📥 Import
+</button>
+
+<div id="wordList"></div>
+
 </div>
 
-<div class="card">
-  <h3>Hints</h3>
-  <input id="hint" placeholder="add hint">
-  <button onclick="addHint()">Add</button>
-  <div id="hints"></div>
 </div>
 
-<script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+<!-- PLAYERS -->
+<div class="card">
 
-const supabase = createClient(
-  "https://inbdtzacrdtzkuldmedj.supabase.co",
-  "sb_publishable_NJcYRaw09I5ZFbDDIEyeJg_tTdaG1NE"
-);
+<h3>👥 Gracze</h3>
 
-let room = null;
-let nick = null;
-let myRole = "";
-let channel = null;
+<input id="playerInput" placeholder="Nick">
 
-/* CREATE ROOM */
-window.createRoom = async () => {
-  room = document.getElementById("code").value;
-  nick = document.getElementById("nick").value;
+<button onclick="addPlayer()">
+➕ Dodaj
+</button>
 
-  await supabase.from("rooms").insert({
-    code: room,
-    host: nick,
-    word: "",
-    started: false,
-    players: [{ nick, role: "" }],
-    hints: []
+<div id="playersList"></div>
+
+</div>
+
+<!-- GAME -->
+<div class="card">
+
+<button onclick="startGame()">
+🎮 START
+</button>
+
+<button onclick="nextPlayer()">
+➡ NEXT
+</button>
+
+<p id="timer">⏱ 10</p>
+
+</div>
+
+<!-- ROLE -->
+<div class="card">
+
+<div class="ball" id="ball">
+🎭
+</div>
+
+<h2 id="role">
+Kliknij REVEAL
+</h2>
+
+<button onclick="revealRole()">
+👁 REVEAL
+</button>
+
+</div>
+
+</div>
+
+<script>
+
+let players = [];
+
+let words =
+JSON.parse(localStorage.getItem("words")) || [];
+
+let impostors = [];
+
+let index = 0;
+let currentWord = null;
+
+let time = 10;
+let interval;
+
+/* 👥 PLAYERS */
+
+function addPlayer(){
+
+  if(!playerInput.value) return;
+
+  players.push(playerInput.value);
+
+  playerInput.value = "";
+
+  renderPlayers();
+}
+
+function renderPlayers(){
+
+  playersList.innerHTML =
+    players.map(p=>"🏀 "+p).join("<br>");
+}
+
+/* 📚 SAVE */
+
+function saveWords(){
+
+  localStorage.setItem(
+    "words",
+    JSON.stringify(words)
+  );
+}
+
+/* 📚 ADD WORD */
+
+function addWord(){
+
+  if(!wordInput.value || !hintInput.value)
+    return;
+
+  words.push({
+    w:wordInput.value,
+    h:hintInput.value
   });
 
-  openRoom(room);
-};
+  wordInput.value = "";
+  hintInput.value = "";
 
-/* JOIN ROOM */
-window.joinRoom = async () => {
-  room = document.getElementById("code").value;
-  nick = document.getElementById("nick").value;
+  saveWords();
+  renderWords();
+}
 
-  const { data } = await supabase.from("rooms").select("*").eq("code", room).single();
+/* 📚 RENDER */
 
-  let players = data.players || [];
-  players.push({ nick, role: "" });
+function renderWords(){
 
-  await supabase.from("rooms").update({ players }).eq("code", room);
+  wordList.innerHTML = words.map((x,i)=>
 
-  openRoom(room);
-};
+    `<div class="wordItem">
 
-/* SET WORD (HOST) */
-window.setWord = async () => {
-  const word = document.getElementById("word").value;
+      🔤 ${x.w}
+      <br>
+      💡 ${x.h}
 
-  await supabase.from("rooms").update({ word }).eq("code", room);
-};
+      <br><br>
 
-/* START GAME */
-window.startGame = async () => {
-  const { data } = await supabase.from("rooms").select("*").eq("code", room).single();
+      <button onclick="deleteWord(${i})">
+      ❌ Usuń
+      </button>
 
-  let players = data.players;
+    </div>`
 
-  let impostorIndex = Math.floor(Math.random() * players.length);
+  ).join("");
+}
 
-  players = players.map((p, i) => {
-    if (i === impostorIndex) {
-      return { ...p, role: "IMPOSTOR" };
-    } else {
-      return { ...p, role: "WORD:" + data.word };
+/* ❌ DELETE */
+
+function deleteWord(i){
+
+  words.splice(i,1);
+
+  saveWords();
+  renderWords();
+}
+
+/* 📖 TOGGLE */
+
+function toggleDB(){
+
+  db.classList.toggle("hidden");
+}
+
+/* 📤 EXPORT */
+
+function exportWords(){
+
+  let data = JSON.stringify(words);
+
+  let blob = new Blob(
+    [data],
+    {type:"application/json"}
+  );
+
+  let a = document.createElement("a");
+
+  a.href = URL.createObjectURL(blob);
+
+  a.download = "impostor_words.json";
+
+  a.click();
+}
+
+/* 📥 IMPORT */
+
+function importWords(){
+
+  let file = importFile.files[0];
+
+  if(!file) return;
+
+  let reader = new FileReader();
+
+  reader.onload = function(e){
+
+    try{
+
+      let imported =
+        JSON.parse(e.target.result);
+
+      words = imported;
+
+      saveWords();
+      renderWords();
+
+      alert("Zaimportowano hasła");
+
+    }catch{
+
+      alert("Błąd pliku");
     }
-  });
+  }
 
-  await supabase.from("rooms")
-    .update({ players, started: true })
-    .eq("code", room);
-};
-
-/* SHOW ROLE (PRIVATE) */
-window.showRole = async () => {
-  const { data } = await supabase.from("rooms").select("*").eq("code", room).single();
-
-  const me = data.players.find(p => p.nick === nick);
-  myRole = me.role;
-
-  document.getElementById("role").innerText = myRole;
-};
-
-window.hideRole = () => {
-  document.getElementById("role").innerText = "🔒 hidden (pass phone)";
-};
-
-/* HINTS */
-window.addHint = async () => {
-  const h = document.getElementById("hint").value;
-
-  const { data } = await supabase.from("rooms").select("*").eq("code", room).single();
-
-  let hints = data.hints || [];
-  hints.push(h);
-
-  await supabase.from("rooms").update({ hints }).eq("code", room);
-};
-
-/* OPEN ROOM */
-function openRoom(code){
-  document.getElementById("roomTitle").innerText = "Room: " + code;
-  loadRoom();
-  listen();
+  reader.readAsText(file);
 }
 
-/* LOAD */
-async function loadRoom(){
-  const { data } = await supabase.from("rooms").select("*").eq("code", room).single();
+/* 🚀 START */
 
-  document.getElementById("players").innerHTML =
-    (data.players || []).map(p => "👤 " + p.nick).join("<br>");
+function startGame(){
 
-  document.getElementById("hints").innerHTML =
-    (data.hints || []).map(h => "💡 " + h).join("<br>");
+  if(players.length < 2){
+    alert("Dodaj minimum 2 graczy");
+    return;
+  }
+
+  if(words.length === 0){
+    alert("Dodaj hasła");
+    return;
+  }
+
+  let count =
+    parseInt(impCount.value);
+
+  impostors = [];
+
+  while(impostors.length < count){
+
+    let r =
+      Math.floor(
+        Math.random()*players.length
+      );
+
+    if(!impostors.includes(r)){
+      impostors.push(r);
+    }
+  }
+
+  currentWord =
+    words[
+      Math.floor(Math.random()*words.length)
+    ];
+
+  index = 0;
+
+  showPlayer();
 }
 
-/* REALTIME */
-function listen(){
-  if (channel) supabase.removeChannel(channel);
+/* 👁 SHOW PLAYER */
 
-  channel = supabase.channel("room-"+room)
-    .on("postgres_changes",
-      { event:"UPDATE", schema:"public", table:"rooms", filter:`code=eq.${room}` },
-      () => loadRoom()
-    )
-    .subscribe();
+function showPlayer(){
+
+  meeting.style.display = "none";
+  black.style.display = "none";
+
+  ball.innerText = players[index];
+
+  role.innerText =
+    "Kliknij REVEAL";
 }
+
+/* 👁 REVEAL */
+
+function revealRole(){
+
+  let isImp =
+    impostors.includes(index);
+
+  if(isImp){
+
+    role.innerText =
+      "😈 IMPOSTOR\n💡 " +
+      currentWord.h;
+
+    if(know.value === "yes"){
+
+      let others =
+        impostors
+        .filter(i=>i!==index)
+        .map(i=>players[i]);
+
+      if(others.length){
+
+        role.innerText +=
+          "\n🤝 drugi impostor: " +
+          others.join(", ");
+      }
+    }
+
+  }else{
+
+    role.innerText =
+      "🔤 " + currentWord.w;
+  }
+
+  startTimer();
+}
+
+/* ⏱ TIMER */
+
+function startTimer(){
+
+  clearInterval(interval);
+
+  time = 10;
+
+  timer.innerText =
+    "⏱ " + time;
+
+  interval = setInterval(()=>{
+
+    time--;
+
+    timer.innerText =
+      "⏱ " + time;
+
+    if(time <= 0){
+
+      clearInterval(interval);
+
+      role.innerText = "";
+
+      /* 🏁 LAST PLAYER */
+
+      if(index === players.length - 1){
+
+        ball.innerText = "🎭";
+
+        timer.innerText = "";
+
+        meeting.style.display = "flex";
+
+        setTimeout(()=>{
+
+          meeting.style.display = "none";
+
+        },3000);
+
+      }else{
+
+        /* 🔒 PASS PHONE */
+
+        black.style.display = "flex";
+
+        setTimeout(()=>{
+
+          black.style.display = "none";
+
+        },1200);
+      }
+    }
+
+  },1000);
+}
+
+/* ➡ NEXT */
+
+function nextPlayer(){
+
+  clearInterval(interval);
+
+  if(index >= players.length - 1){
+    return;
+  }
+
+  index++;
+
+  showPlayer();
+}
+
+/* 🚀 AUTO LOAD */
+
+renderWords();
+
 </script>
 
 </body>
